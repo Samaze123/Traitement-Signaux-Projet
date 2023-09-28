@@ -5,11 +5,11 @@ try:
     # ================#
     # GLOBAL VARIABLE #
     # ================#
-    CIRCLE_DIAMETER_CM = 4
+    CIRCLE_DIAMETER_CM = 0.55
     MAX_DIMENSION = 800
     IMAGE_PATH = "./tests/tiroir_openlab.png"
     TITLE_WINDOW = "Detected Circles"
-    # IMAGE_PATH = "./tests/feuille_blanche.png"
+    # IMAGE_PATH = "./tests/feuille2.png"
 
     UNTOUCHED_IMAGE = cv.imread(IMAGE_PATH)
 
@@ -77,6 +77,11 @@ try:
         )
         # print(f"Selected Rectangle Height: {WHITE_RECTANGLE_HEIGHT_CM:.2f} cm")
 
+    def show(image):
+        cv.imshow("", image)
+        cv.waitKeyEx(0)
+        cv.destroyAllWindows()
+
     # ========#
     # PROGRAM #
     # ========#
@@ -109,49 +114,85 @@ try:
         cv.CHAIN_APPROX_SIMPLE,
         offset=(0, 0),
     )[0]
-
     if len(WHITE_RECTANGLE_CONTOURS) > 0:
-        largest_area = 0
-        largest_rect = (0, 0, 0, 0)
-        for CONTOUR in WHITE_RECTANGLE_CONTOURS:
-            X_CONTOUR, Y_CONTOUR, WIDTH_CONTOUR, HEIGHT_CONTOUR = cv.boundingRect(
-                CONTOUR
-            )
-            AREA = WIDTH_CONTOUR * HEIGHT_CONTOUR
-            if AREA > largest_area:
-                largest_area = AREA
-                largest_rect = (X_CONTOUR, Y_CONTOUR, WIDTH_CONTOUR, HEIGHT_CONTOUR)
-
+        WHITE_RECTANGLE_LARGEST_CONTOUR = max(
+            WHITE_RECTANGLE_CONTOURS, key=cv.contourArea
+        )
         (
             WHITE_RECT_X_COORD,
             WHITE_RECT_Y_COORD,
             WHITE_RECT_WIDTH,
             WHITE_RECT_HEIGHT,
-        ) = largest_rect
+        ) = cv.boundingRect(WHITE_RECTANGLE_LARGEST_CONTOUR)
 
-        WHITE_RECT_IMAGE = RESIZED_UNTOUCHED_IMAGE[
-            WHITE_RECT_Y_COORD : WHITE_RECT_Y_COORD + WHITE_RECT_HEIGHT,
-            WHITE_RECT_X_COORD : WHITE_RECT_X_COORD + WHITE_RECT_WIDTH,
-        ]
-        cv.rectangle(
-            WHITE_RECT_IMAGE,
-            (0, 0),
-            (WHITE_RECT_WIDTH - 2, WHITE_RECT_HEIGHT - 2),
-            (0, 0, 255),
-            2,
+        angle = cv.minAreaRect(WHITE_RECTANGLE_LARGEST_CONTOUR)[-1]
+
+        # If the angle is negative, adjust it to be in the range [0, 90]
+        if angle < -45:
+            angle += 90
+
+        # Create a rotation matrix
+        ROTATION_MATRIX = cv.getRotationMatrix2D(
+            (
+                WHITE_RECT_X_COORD + WHITE_RECT_WIDTH / 2,
+                WHITE_RECT_Y_COORD + WHITE_RECT_HEIGHT / 2,
+            ),
+            angle,
+            1,
         )
-        GRAY_WHITE_RECTANGLE = cv.cvtColor(WHITE_RECT_IMAGE, cv.COLOR_BGR2GRAY)
 
+        # Apply the rotation to the image
+        ROTATED_IMAGE = cv.warpAffine(
+            RESIZED_UNTOUCHED_IMAGE,
+            ROTATION_MATRIX,
+            (RESIZED_UNTOUCHED_IMAGE.shape[1], RESIZED_UNTOUCHED_IMAGE.shape[0]),
+            flags=cv.INTER_LINEAR,
+        )
+        GRAY_ROTATED_IMAGE = cv.cvtColor(ROTATED_IMAGE, cv.COLOR_BGR2GRAY)
+
+        THRESHOLDED_ROTATED_IMAGE = cv.threshold(
+            GRAY_ROTATED_IMAGE, 128, 255, cv.THRESH_BINARY
+        )[1]
+        WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE = cv.findContours(
+            THRESHOLDED_ROTATED_IMAGE,
+            cv.RETR_EXTERNAL,
+            cv.CHAIN_APPROX_SIMPLE,
+            offset=(0, 0),
+        )[0]
+        if len(WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE) > 0:
+            WHITE_RECTANGLE_LARGEST_CONTOUR_ROTATED_IMAGE = max(
+                WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE, key=cv.contourArea
+            )
+            cv.drawContours(
+                ROTATED_IMAGE,
+                WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE,
+                -1,
+                (0, 0, 255),  # BGR : Red
+                2,
+            )
+            (
+                WHITE_RECT_X_COORD_ROTATED_IMAGE,
+                WHITE_RECT_Y_COORD_ROTATED_IMAGE,
+                WHITE_RECT_WIDTH_ROTATED_IMAGE,
+                WHITE_RECT_HEIGHT_ROTATED_IMAGE,
+            ) = cv.boundingRect(WHITE_RECTANGLE_LARGEST_CONTOUR_ROTATED_IMAGE)
+        WHITE_RECT_IMAGE = ROTATED_IMAGE[
+            WHITE_RECT_Y_COORD_ROTATED_IMAGE : WHITE_RECT_Y_COORD_ROTATED_IMAGE
+            + WHITE_RECT_HEIGHT_ROTATED_IMAGE,
+            WHITE_RECT_X_COORD_ROTATED_IMAGE : WHITE_RECT_X_COORD_ROTATED_IMAGE
+            + WHITE_RECT_WIDTH_ROTATED_IMAGE,
+        ]
+        GRAY_WHITE_RECTANGLE = cv.cvtColor(WHITE_RECT_IMAGE, cv.COLOR_BGR2GRAY)
         BLURRED_GRAY_WHITE_RECTANGLE = cv.GaussianBlur(GRAY_WHITE_RECTANGLE, (9, 9), 2)
 
         RAW_CIRCLES_IN_WHITE_RECTANGLE = cv.HoughCircles(
             BLURRED_GRAY_WHITE_RECTANGLE,
             cv.HOUGH_GRADIENT,
             dp=1,
-            minDist=20,  # Minimum distance between detected circles
-            param1=50,  # Upper threshold for edge detection
-            param2=15,  # Threshold for circle detection
-            minRadius=5,  # Minimum circle radius
+            minDist=50,  # Minimum distance between detected circles
+            param1=255,  # Upper threshold for edge detection
+            param2=13,  # Threshold for circle detection
+            minRadius=1,  # Minimum circle radius
             maxRadius=50,  # Maximum circle radius (adjust as needed)
         )
 

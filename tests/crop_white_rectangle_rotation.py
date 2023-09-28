@@ -1,0 +1,254 @@
+import cv2 as cv
+import numpy as np
+
+try:
+    # ================#
+    # GLOBAL VARIABLE #
+    # ================#
+    CIRCLE_DIAMETER_CM = 0.55
+    MAX_DIMENSION = 800
+    IMAGE_PATH = "./tests/tiroir_openlab.png"
+    TITLE_WINDOW = "Detected Circles"
+    # IMAGE_PATH = "./tests/feuille2.png"
+
+    UNTOUCHED_IMAGE = cv.imread(IMAGE_PATH)
+
+    global_selected_circle = None
+
+    # ==========#
+    # FUNCTIONS #
+    # ==========#
+    def select_circle(event, x, y, *args):
+        if event == cv.EVENT_LBUTTONDOWN:
+            # Check if the click is inside a circle
+            for CIRCLE in CIRCLES_IN_WHITE_RECTANGLE:
+                CENTER, RADIUS = (CIRCLE[0], CIRCLE[1]), CIRCLE[2]
+                if np.sqrt((x - CENTER[0]) ** 2 + (y - CENTER[1]) ** 2) < RADIUS:
+                    global global_selected_circle
+                    global_selected_circle = CIRCLE
+                    print_informations_circle_rectangle(
+                        CIRCLE, WHITE_RECT_WIDTH, WHITE_RECT_HEIGHT
+                    )
+                    change_selected_color(CIRCLE)
+                    break
+
+    def change_selected_color(selected_circle):
+        if selected_circle is not None:
+            for CIRCLE in CIRCLES_IN_WHITE_RECTANGLE:
+                X_CIRCLE, Y_CIRCLE, R_CIRCLE = CIRCLE
+                (
+                    X_SELECTED_CIRCLE,
+                    Y_SELECTED_CIRCLE,
+                    R_SELECTED_CIRCLE,
+                ) = selected_circle
+                if (X_CIRCLE, Y_CIRCLE, R_CIRCLE) == (
+                    X_SELECTED_CIRCLE,
+                    Y_SELECTED_CIRCLE,
+                    R_SELECTED_CIRCLE,
+                ):
+                    cv.circle(
+                        WHITE_RECT_IMAGE,
+                        (X_CIRCLE, Y_CIRCLE),
+                        R_CIRCLE,
+                        (255, 0, 0),
+                        2,
+                    )
+                else:
+                    cv.circle(
+                        WHITE_RECT_IMAGE,
+                        (X_CIRCLE, Y_CIRCLE),
+                        R_CIRCLE,
+                        (0, 255, 0),
+                        2,
+                    )
+        cv.imshow(TITLE_WINDOW, WHITE_RECT_IMAGE)
+
+    def print_informations_circle_rectangle(circle, rect_width, rect_height):
+        print("####################")
+        print(
+            f"\n=====\nSelected Circle Diameter (in pixels): {circle[2] * 2}\n-----\n"
+        )
+        # Calculate and print information about the selected circle immediately
+        SCALE_FACTOR = CIRCLE_DIAMETER_CM / (circle[2] * 2)
+        WHITE_RECTANGLE_WIDTH_CM = rect_width * SCALE_FACTOR
+        WHITE_RECTANGLE_HEIGHT_CM = rect_height * SCALE_FACTOR
+        print(
+            f"Selected Rectangle: {WHITE_RECTANGLE_WIDTH_CM:.2f} x {WHITE_RECTANGLE_HEIGHT_CM:.2f} cm"
+        )
+        # print(f"Selected Rectangle Height: {WHITE_RECTANGLE_HEIGHT_CM:.2f} cm")
+
+    def show(image):
+        cv.imshow("", image)
+        cv.waitKeyEx(0)
+        cv.destroyAllWindows()
+
+    # ========#
+    # PROGRAM #
+    # ========#
+    (
+        ORIGINAL_HEIGHT,
+        ORIGINAL_WIDTH,
+    ) = UNTOUCHED_IMAGE.shape[:2]
+
+    # Calculate the new dimensions
+    if ORIGINAL_WIDTH > ORIGINAL_HEIGHT:
+        NEW_WIDTH = MAX_DIMENSION
+        NEW_HEIGHT = int(ORIGINAL_HEIGHT * (MAX_DIMENSION / ORIGINAL_WIDTH))
+    else:
+        NEW_HEIGHT = MAX_DIMENSION
+        NEW_WIDTH = int(ORIGINAL_WIDTH * (MAX_DIMENSION / ORIGINAL_HEIGHT))
+
+    RESIZED_UNTOUCHED_IMAGE = cv.resize(UNTOUCHED_IMAGE, (NEW_WIDTH, NEW_HEIGHT))
+
+    GRAY_RESIZED_UNTOUCHED_IMAGE = cv.cvtColor(
+        RESIZED_UNTOUCHED_IMAGE, cv.COLOR_BGR2GRAY
+    )
+
+    THRESHOLDED_UNTOUCHED_IMAGE = cv.threshold(
+        GRAY_RESIZED_UNTOUCHED_IMAGE, 128, 255, cv.THRESH_BINARY
+    )[1]
+
+    WHITE_RECTANGLE_CONTOURS = cv.findContours(
+        THRESHOLDED_UNTOUCHED_IMAGE,
+        cv.RETR_EXTERNAL,
+        cv.CHAIN_APPROX_SIMPLE,
+        offset=(0, 0),
+    )[0]
+    if len(WHITE_RECTANGLE_CONTOURS) > 0:
+        WHITE_RECTANGLE_LARGEST_CONTOUR = max(
+            WHITE_RECTANGLE_CONTOURS, key=cv.contourArea
+        )
+        (
+            WHITE_RECT_X_COORD,
+            WHITE_RECT_Y_COORD,
+            WHITE_RECT_WIDTH,
+            WHITE_RECT_HEIGHT,
+        ) = cv.boundingRect(WHITE_RECTANGLE_LARGEST_CONTOUR)
+
+        angle = cv.minAreaRect(WHITE_RECTANGLE_LARGEST_CONTOUR)[-1]
+
+        # If the angle is negative, adjust it to be in the range [0, 90]
+        if angle < -45:
+            angle += 90
+
+        # Create a rotation matrix
+        ROTATION_MATRIX = cv.getRotationMatrix2D(
+            (
+                WHITE_RECT_X_COORD + WHITE_RECT_WIDTH / 2,
+                WHITE_RECT_Y_COORD + WHITE_RECT_HEIGHT / 2,
+            ),
+            angle,
+            1,
+        )
+
+        # Apply the rotation to the image
+        ROTATED_IMAGE = cv.warpAffine(
+            RESIZED_UNTOUCHED_IMAGE,
+            ROTATION_MATRIX,
+            (RESIZED_UNTOUCHED_IMAGE.shape[1], RESIZED_UNTOUCHED_IMAGE.shape[0]),
+            flags=cv.INTER_LINEAR,
+        )
+        GRAY_ROTATED_IMAGE = cv.cvtColor(ROTATED_IMAGE, cv.COLOR_BGR2GRAY)
+
+        THRESHOLDED_ROTATED_IMAGE = cv.threshold(
+            GRAY_ROTATED_IMAGE, 128, 255, cv.THRESH_BINARY
+        )[1]
+        WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE = cv.findContours(
+            THRESHOLDED_ROTATED_IMAGE,
+            cv.RETR_EXTERNAL,
+            cv.CHAIN_APPROX_SIMPLE,
+            offset=(0, 0),
+        )[0]
+        if len(WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE) > 0:
+            WHITE_RECTANGLE_LARGEST_CONTOUR_ROTATED_IMAGE = max(
+                WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE, key=cv.contourArea
+            )
+            cv.drawContours(
+                ROTATED_IMAGE,
+                WHITE_RECTANGLE_CONTOURS_ROTATED_IMAGE,
+                -1,
+                (0, 0, 255),  # BGR : Red
+                2,
+            )
+            (
+                WHITE_RECT_X_COORD_ROTATED_IMAGE,
+                WHITE_RECT_Y_COORD_ROTATED_IMAGE,
+                WHITE_RECT_WIDTH_ROTATED_IMAGE,
+                WHITE_RECT_HEIGHT_ROTATED_IMAGE,
+            ) = cv.boundingRect(WHITE_RECTANGLE_LARGEST_CONTOUR_ROTATED_IMAGE)
+        WHITE_RECT_IMAGE = ROTATED_IMAGE[
+            WHITE_RECT_Y_COORD_ROTATED_IMAGE : WHITE_RECT_Y_COORD_ROTATED_IMAGE
+            + WHITE_RECT_HEIGHT_ROTATED_IMAGE,
+            WHITE_RECT_X_COORD_ROTATED_IMAGE : WHITE_RECT_X_COORD_ROTATED_IMAGE
+            + WHITE_RECT_WIDTH_ROTATED_IMAGE,
+        ]
+        GRAY_WHITE_RECTANGLE = cv.cvtColor(WHITE_RECT_IMAGE, cv.COLOR_BGR2GRAY)
+        BLURRED_GRAY_WHITE_RECTANGLE = cv.GaussianBlur(GRAY_WHITE_RECTANGLE, (9, 9), 2)
+
+        RAW_CIRCLES_IN_WHITE_RECTANGLE = cv.HoughCircles(
+            BLURRED_GRAY_WHITE_RECTANGLE,
+            cv.HOUGH_GRADIENT,
+            dp=1,
+            minDist=50,  # Minimum distance between detected circles
+            param1=255,  # Upper threshold for edge detection
+            param2=13,  # Threshold for circle detection
+            minRadius=1,  # Minimum circle radius
+            maxRadius=50,  # Maximum circle radius (adjust as needed)
+        )
+
+        if RAW_CIRCLES_IN_WHITE_RECTANGLE is not None:
+            # Convert the (x, y) coordinates and radius of the circles to integers
+            CIRCLES_IN_WHITE_RECTANGLE = np.round(
+                RAW_CIRCLES_IN_WHITE_RECTANGLE[0, :]
+            ).astype("int")
+
+            # For each circles detected, drawn a solid border around them. Blue for the currently selected and green for the others.
+            for i, (
+                CIRCLE_X_COORD,
+                CIRCLE_Y_CCORD,
+                CIRCLE_RADIUS,
+            ) in enumerate(CIRCLES_IN_WHITE_RECTANGLE):
+                if i == 0:
+                    cv.circle(
+                        WHITE_RECT_IMAGE,
+                        (CIRCLE_X_COORD, CIRCLE_Y_CCORD),
+                        CIRCLE_RADIUS,
+                        (255, 0, 0),
+                        2,
+                    )  # Draw the circle
+                else:
+                    cv.circle(
+                        WHITE_RECT_IMAGE,
+                        (CIRCLE_X_COORD, CIRCLE_Y_CCORD),
+                        CIRCLE_RADIUS,
+                        (0, 255, 0),
+                        2,
+                    )  # Draw the circle
+
+            print_informations_circle_rectangle(
+                CIRCLES_IN_WHITE_RECTANGLE[0], WHITE_RECT_WIDTH, WHITE_RECT_HEIGHT
+            )
+
+            cv.imshow(TITLE_WINDOW, WHITE_RECT_IMAGE)
+            cv.setMouseCallback(TITLE_WINDOW, select_circle)
+            while True:
+                KEY = cv.waitKeyEx(0)
+                if KEY == 27:  # 27 is 'Esc' key
+                    break
+                if cv.getWindowProperty(TITLE_WINDOW, cv.WND_PROP_VISIBLE) < 1:
+                    break
+
+        else:
+            print("No circles detected in the image.")
+            cv.imshow("No Circles", GRAY_RESIZED_UNTOUCHED_IMAGE)
+            KEY = cv.waitKeyEx(0)
+
+    else:
+        print("No white rectangle found in the image.")
+        cv.imshow("No Light Rectangle", RESIZED_UNTOUCHED_IMAGE)
+        KEY = cv.waitKeyEx(0)
+
+    cv.destroyAllWindows()
+    print("EOP")
+except Exception as e:
+    print(e)
