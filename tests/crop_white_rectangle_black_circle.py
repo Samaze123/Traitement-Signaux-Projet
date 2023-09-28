@@ -56,7 +56,8 @@ try:
 
     CIRCLE_DIAMETER_CM = 0.55
     MAX_DIMENSION = 800
-    IMAGE_PATH = "./tests/feuille_blanche.png"
+    # IMAGE_PATH = "./tests/feuille_blanche.png"
+    IMAGE_PATH = "./tests/tiroir_openlab.png"
 
     UNTOUCHED_IMAGE = cv.imread(IMAGE_PATH)
 
@@ -178,8 +179,12 @@ try:
                     break
         else:
             print("No circles detected in the image.")
+            cv.imshow("No Circles", WHITE_RECTANGLE_IMAGE)
+            KEY = cv.waitKeyEx(0)
     else:
         print("No white rectangle found in the image.")
+        cv.imshow("No Light Rectangle", RESIZED_UNTOUCHED_IMAGE)
+        KEY = cv.waitKeyEx(0)
 
     cv.destroyAllWindows()
     print("EOP")
