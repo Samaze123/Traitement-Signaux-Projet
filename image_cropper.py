@@ -27,8 +27,8 @@ try:
 
         Args:
             event (int): The type of event.
-            x (int): The x-coordinate of the click.
-            y (int): The y-coordinate of the click.
+            event_x_coord (int): The x-coordinate of the click.
+            event_y_coord (int): The y-coordinate of the click.
             *args: Additional arguments.
 
         Returns:
