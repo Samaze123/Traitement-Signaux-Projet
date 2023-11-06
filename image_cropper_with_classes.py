@@ -1,4 +1,5 @@
 from typing import Final, Tuple, cast
+import traceback
 import cv2 as cv
 import numpy as np
 from classes.Image import Image
@@ -17,6 +18,7 @@ try:
     white_rectangle: Rectangle = Rectangle()
     rotated_image: Image = Image()
     rotated_white_rectangle: Rectangle = Rectangle()
+    white_rectangle_image = Image()
 
     opened_image.max_dimension = 800
     opened_image.original_image = cv.imread(IMAGE_PATH)
@@ -60,7 +62,7 @@ try:
                 ):
                     global global_selected_circle
                     global_selected_circle = circle
-                    print_informations_circle_rectangle(circle, white_rectangle)
+                    print_informations_selected_circle(circle, white_rectangle)
                     change_selected_color(circle)
                     break
 
@@ -104,7 +106,7 @@ try:
                     )
         cv.imshow(TITLE_WINDOW, white_rectangle_image.original_image)
 
-    def print_informations_circle_rectangle(
+    def print_informations_selected_circle(
         circle: np.ndarray, rectangle: Rectangle
     ) -> None:
         """
@@ -169,6 +171,33 @@ try:
         cv.imshow("", image)
         cv.waitKeyEx(0)
         cv.destroyAllWindows()
+
+    def get_circles(image: Image) -> np.ndarray:
+        RAW_CIRCLES_IN_WHITE_RECTANGLE: Final[np.ndarray] = cv.HoughCircles(
+            image.blurred_image,
+            cv.HOUGH_GRADIENT,
+            dp=1,
+            minDist=50,  # Minimum distance between detected circles
+            param1=255,  # Upper threshold for edge detection
+            param2=13,  # Threshold for circle detection
+            minRadius=1,  # Minimum circle radius
+            maxRadius=50,  # Maximum circle radius (adjust as needed)
+        )
+
+        if RAW_CIRCLES_IN_WHITE_RECTANGLE is not None:
+            return np.round(RAW_CIRCLES_IN_WHITE_RECTANGLE[0, :]).astype("int")
+        return None
+
+    def print_informations_circles(circles_array: np.ndarray) -> None:
+        for i, (
+            CIRCLE_X_COORD,
+            CIRCLE_Y_CCORD,
+            CIRCLE_RADIUS,
+        ) in enumerate(circles_array):
+            print(f"Circle {i + 1}:")
+            print(f"X: {CIRCLE_X_COORD}")
+            print(f"Y: {CIRCLE_Y_CCORD}")
+            print(f"Radius: {CIRCLE_RADIUS}")
 
     # ========#
     # PROGRAM #
@@ -252,8 +281,6 @@ try:
                 cv.boundingRect(rotated_white_rectangle.largest_contour),
             )
 
-        white_rectangle_image = Image()
-
         white_rectangle_image.original_image = rotated_image.original_image[
             rotated_white_rectangle.coord[1] : rotated_white_rectangle.coord[1]
             + rotated_white_rectangle.size[1],
@@ -268,23 +295,11 @@ try:
             white_rectangle_image.gray_image, (9, 9), 2
         )
 
-        RAW_CIRCLES_IN_WHITE_RECTANGLE: Final[np.ndarray] = cv.HoughCircles(
-            white_rectangle_image.blurred_image,
-            cv.HOUGH_GRADIENT,
-            dp=1,
-            minDist=50,  # Minimum distance between detected circles
-            param1=255,  # Upper threshold for edge detection
-            param2=13,  # Threshold for circle detection
-            minRadius=1,  # Minimum circle radius
-            maxRadius=50,  # Maximum circle radius (adjust as needed)
+        CIRCLES_IN_WHITE_RECTANGLE: Final[np.ndarray] = get_circles(
+            white_rectangle_image
         )
 
-        if RAW_CIRCLES_IN_WHITE_RECTANGLE is not None:
-            # Convert the (x, y) coordinates and radius of the circles to integers
-            CIRCLES_IN_WHITE_RECTANGLE: Final[np.ndarray] = np.round(
-                RAW_CIRCLES_IN_WHITE_RECTANGLE[0, :]
-            ).astype("int")
-
+        if CIRCLES_IN_WHITE_RECTANGLE is not None:
             # For each circles detected, drawn a solid border around them.
             # Blue for the currently selected and green for the others.
             for i, (
@@ -309,9 +324,10 @@ try:
                         2,
                     )  # Draw the circle
 
-            print_informations_circle_rectangle(
+            print_informations_selected_circle(
                 CIRCLES_IN_WHITE_RECTANGLE[0], white_rectangle
             )
+            print_informations_circles(CIRCLES_IN_WHITE_RECTANGLE)
             cv.imshow(TITLE_WINDOW, white_rectangle_image.original_image)
             cv.setMouseCallback(TITLE_WINDOW, select_circle)
             while True:
@@ -347,5 +363,5 @@ try:
 
     cv.destroyAllWindows()
     print("EOP")
-except Exception as e:
-    print(e)
+except Exception:
+    traceback.print_exc()
