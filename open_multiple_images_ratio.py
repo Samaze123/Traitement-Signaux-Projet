@@ -12,13 +12,12 @@ try:
     # GLOBAL VARIABLE #
     # ================#
     MAX_DIMENSION: Final[int] = 800
-    CIRCLE_DIAMETER_CM: Final[float] = 0.55
     # IMAGE_PATH: Final[str] = "./tests/tiroir_openlab.png"
     FOLDER_PATH: Final[str] = "./images/images_converted"
     TITLE_WINDOW: Final[str] = "Detected Circles"
 
     global_selected_circle: Tuple[int] = None
-    global_white_rectangle_size: Tuple[int] = None
+    global_white_rectangle_ratio: Tuple[int] = None
     global_selected_filename = None
 
     # ==========#
@@ -102,58 +101,25 @@ try:
                     )
         cv.imshow(TITLE_WINDOW, white_rectangle_image.original_image)
 
-    def calculate_white_rectangle_size(
+    def calculate_white_rectangle_position(
         circle: np.ndarray, rectangle: Rectangle
     ) -> Tuple[float, float]:
-        """
-        Calculates the size of a white rectangle based on the size of a circle and a rectangle.
-
-        Args:
-            circle (np.ndarray): A numpy array representing a circle.
-            rectangle (Rectangle): A rectangle object.
-
-        Returns:
-            A tuple containing the following values:
-            - CIRCLE_DIAMETER_PIXEL (float): The diameter of the circle in pixels.
-            - CIRCLE_DIAMETER_CM (float): The diameter of the circle in centimeters.
-            - WHITE_RECTANGLE_WIDTH_CM (float): The width of the white rectangle in centimeters.
-            - WHITE_RECTANGLE_HEIGHT_CM (float): The height of the white rectangle in centimeters.
-            - CIRCLE_DISTANCE_FROM_TOP_CM (float): The distance from the top of the rectangle to the center of the circle in centimeters.
-            - CIRCLE_DISTANCE_FROM_LEFT_CM (float): The distance from the left of the rectangle to the center of the circle in centimeters.
-        """
         x, y, r = circle
         CIRCLE_DIAMETER_PIXEL: Final[int] = r * 2
-        CIRCLE_DIAMETER_CM: Final[float] = 2.5  # cm
 
-        # Calculate and print information about the selected circle immediately
-        SCALE_FACTOR: Final[float] = CIRCLE_DIAMETER_CM / CIRCLE_DIAMETER_PIXEL
-        WHITE_RECTANGLE_WIDTH_CM: Final[float] = rectangle.size[0] * SCALE_FACTOR
-        WHITE_RECTANGLE_HEIGHT_CM: Final[float] = rectangle.size[1] * SCALE_FACTOR
-
-        # Calculate distances
         CIRCLE_DISTANCE_FROM_TOP_PIXEL: Final[int] = y - rectangle.coord[1]
         CIRCLE_DISTANCE_FROM_LEFT_PIXEL: Final[int] = x - rectangle.coord[0]
 
-        CIRCLE_DISTANCE_FROM_TOP_CM = CIRCLE_DISTANCE_FROM_TOP_PIXEL * SCALE_FACTOR
-        CIRCLE_DISTANCE_FROM_LEFT_CM = CIRCLE_DISTANCE_FROM_LEFT_PIXEL * SCALE_FACTOR
-
         return (
             CIRCLE_DIAMETER_PIXEL,
-            CIRCLE_DIAMETER_CM,
-            WHITE_RECTANGLE_WIDTH_CM,
-            WHITE_RECTANGLE_HEIGHT_CM,
-            CIRCLE_DISTANCE_FROM_TOP_CM,
-            CIRCLE_DISTANCE_FROM_LEFT_CM,
+            CIRCLE_DISTANCE_FROM_TOP_PIXEL,
+            CIRCLE_DISTANCE_FROM_LEFT_PIXEL,
         )
 
     def print_selected_circle_info(
         CIRCLE_DIAMETER_PIXEL: int,
-        WHITE_RECTANGLE_WIDTH_CM: float,
-        WHITE_RECTANGLE_HEIGHT_CM: float,
         CIRCLE_DISTANCE_FROM_TOP_PIXEL: int,
         CIRCLE_DISTANCE_FROM_LEFT_PIXEL: int,
-        CIRCLE_DISTANCE_FROM_TOP_CM: float,
-        CIRCLE_DISTANCE_FROM_LEFT_CM: float,
     ) -> None:
         """
         Prints information about a selected circle and rectangle.
@@ -177,18 +143,9 @@ try:
         print(
             f"\n=====\nSelected Circle Diameter (in pixels): {CIRCLE_DIAMETER_PIXEL}\n-----\n"
         )
-        print(
-            f"Selected Rectangle: \
-            {WHITE_RECTANGLE_WIDTH_CM:.2f} x {WHITE_RECTANGLE_HEIGHT_CM:.2f} cm"
-        )
+
         print(f"Distance from top (in pixels): {CIRCLE_DISTANCE_FROM_TOP_PIXEL}")
         print(f"Distance from left (in pixels): {CIRCLE_DISTANCE_FROM_LEFT_PIXEL}")
-        print(
-            f"Distance from top (in centimeters): {CIRCLE_DISTANCE_FROM_TOP_CM:.2f} cm"
-        )
-        print(
-            f"Distance from left (in centimeters): {CIRCLE_DISTANCE_FROM_LEFT_CM:.2f} cm"
-        )
 
     def show(image: np.ndarray) -> None:
         """
@@ -236,7 +193,11 @@ try:
     # PROGRAM #
     # ========#
     for i, filename in enumerate(os.listdir(FOLDER_PATH)):
-        if filename.endswith(".jpeg") or filename.endswith(".jpg"):
+        if (
+            filename.endswith(".jpeg")
+            or filename.endswith(".jpg")
+            or filename.endswith(".png")
+        ):
             IMAGE_PATH: Final[str] = os.path.join(FOLDER_PATH, filename)
             opened_image: Image = Image()
             white_rectangle: Rectangle = Rectangle()
@@ -348,10 +309,12 @@ try:
                     white_rectangle_image
                 )
 
-                if CIRCLES_IN_WHITE_RECTANGLE is not None:
-                    # For each circles detected, drawn a solid border around them.
-                    # Blue for the currently selected and green for the others.
+                if CIRCLES_IN_WHITE_RECTANGLE is None:
+                    print(
+                        f"Pas de cercles détectés dans la planche de l'image {filename}."
+                    )
 
+                elif len(CIRCLES_IN_WHITE_RECTANGLE) == 1:
                     for j, (
                         CIRCLE_X_COORD,
                         CIRCLE_Y_CCORD,
@@ -375,28 +338,25 @@ try:
                             )  # Draw the circle
                     (
                         diameter_pixel,
-                        diameter_cm,
-                        rectangle_width,
-                        rectangle_height,
                         circle_from_top,
                         circle_from_left,
-                    ) = calculate_white_rectangle_size(
+                    ) = calculate_white_rectangle_position(
                         CIRCLES_IN_WHITE_RECTANGLE[0], white_rectangle
                     )
-                    WHITE_RECTANGLE_SIZE: Tuple = (rectangle_width, rectangle_height)
-                    # print_selected_circle_info(
-                    #     diameter_pixel,
-                    #     diameter_cm,
-                    #     rectangle_width,
-                    #     rectangle_height,
-                    #     circle_from_top,
-                    #     circle_from_left,
-                    # )
+
+                    WHITE_RECTANGLE_RATIO: Final[float] = (
+                        white_rectangle.size[0] / white_rectangle.size[1]
+                        if white_rectangle.size[0] > white_rectangle.size[1]
+                        else white_rectangle.size[1] / white_rectangle.size[0]
+                        if white_rectangle.size[1] > white_rectangle.size[0]
+                        else 1.0
+                    )
+
                     if i == 0:
                         global_selected_filename = filename
-                        global_white_rectangle_size = WHITE_RECTANGLE_SIZE
+                        global_white_rectangle_ratio = WHITE_RECTANGLE_RATIO
                         print(
-                            f"##########################\n{global_white_rectangle_size}\n##########################"
+                            f"##########################\nFirst Rectangle : {global_white_rectangle_ratio}\n{filename}"
                         )
                         # print_informations_circles(CIRCLES_IN_WHITE_RECTANGLE)
                         cv.imshow(TITLE_WINDOW, white_rectangle_image.original_image)
@@ -411,16 +371,14 @@ try:
                             ):
                                 break
                     else:
-                        print(
-                            f"##########################\n{WHITE_RECTANGLE_SIZE}\n##########################"
-                        )
-                        if WHITE_RECTANGLE_SIZE != global_white_rectangle_size:
+                        print(f"##########################\n{WHITE_RECTANGLE_RATIO}")
+                        if WHITE_RECTANGLE_RATIO != global_white_rectangle_ratio:
                             print(
                                 f"La planche sur l'image {filename} n'est pas la même que celle de l'image {global_selected_filename}."
                             )
-                else:
+                elif len(CIRCLES_IN_WHITE_RECTANGLE) > 1:
                     print(
-                        f"Pas de cercles détectés dans la planche de l'image {filename}."
+                        f"Plusieurs cercles détectés dans la planche de l'image {filename}."
                     )
 
             else:

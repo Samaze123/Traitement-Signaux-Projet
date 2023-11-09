@@ -8,6 +8,15 @@ class Rectangle:
         self.coord: list[int] = [0, 0]
         self.rotation_matrix: np.ndarray = None
         self.size: list[int] = [0, 0]
+        self.ratio: float = 0.0
+
+    @property
+    def ratio(self):
+        return self._ratio
+
+    @ratio.setter
+    def ratio(self, new_ratio: list[int]):
+        self._ratio = new_ratio
 
     @property
     def size(self):
