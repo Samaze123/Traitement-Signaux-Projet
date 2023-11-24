@@ -11,7 +11,6 @@ try:
     # GLOBAL VARIABLE #
     # ================#
     MAX_DIMENSION: Final[int] = 800
-    # IMAGE_PATH: Final[str] = "./tests/tiroir_openlab.png"
     FOLDER_PATH: Final[str] = "./images/images_converted"
     TITLE_WINDOW: Final[str] = "Detected Circles"
 
