@@ -5,7 +5,6 @@ import numpy as np
 import os
 from classes.Image import Image
 from classes.Rectangle import Rectangle
-from image_cropper import MAX_DIMENSION
 
 try:
     # ================#
