@@ -11,7 +11,7 @@ try:
     # GLOBAL VARIABLE #
     # ================#
     MAX_DIMENSION: Final[int] = 800
-    # IMAGE_PATH: Final[str] = "./tests/tiroir_openlab.png"
+    MARGIN_ERROR: Final[float] = 1.1
     FOLDER_PATH: Final[str] = "./images/images_converted"
     TITLE_WINDOW: Final[str] = "Detected Circles"
 
@@ -309,10 +309,7 @@ try:
                 )
 
                 if CIRCLES_IN_WHITE_RECTANGLE is None:
-                    print(
-                        f"Pas de cercles détectés dans la planche de l'image {filename}."
-                    )
-
+                    pass
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) == 1:
                     for j, (
                         CIRCLE_X_COORD,
@@ -371,19 +368,24 @@ try:
                                 break
                     else:
                         print(f"##########################\n{WHITE_RECTANGLE_RATIO}")
-                        if WHITE_RECTANGLE_RATIO != global_white_rectangle_ratio:
-                            print(
-                                f"La planche sur l'image {filename} n'est pas la même que celle de l'image {global_selected_filename}."
-                            )
+                        if (
+                            WHITE_RECTANGLE_RATIO
+                            > MARGIN_ERROR * global_white_rectangle_ratio
+                        ):
+                            print(f"La planche sur l'image {filename} est trop grande.")
+                        elif (
+                            WHITE_RECTANGLE_RATIO
+                            < global_white_rectangle_ratio / MARGIN_ERROR
+                        ):
+                            print(f"La planche sur l'image {filename} est trop petite.")
+                        else:
+                            print(f"La planche sur l'image {filename} est identique.")
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) > 1:
-                    print(
-                        f"Plusieurs cercles détectés dans la planche de l'image {filename}."
-                    )
-
+                    pass
             else:
-                print(f"Pas de planches détectées dans l'image {filename}.")
+                pass
         else:
-            print(f"{filename} n'est pas un fichier géré. Passe...")
+            pass
     print("EOP")
 except Exception:
     traceback.print_exc()
