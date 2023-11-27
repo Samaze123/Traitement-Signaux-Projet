@@ -309,7 +309,7 @@ try:
                 )
 
                 if CIRCLES_IN_WHITE_RECTANGLE is None:
-                    pass
+                    print(f"Pas de cercles détectés sur l'image {filename}")
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) == 1:
                     for j, (
                         CIRCLE_X_COORD,
@@ -381,11 +381,11 @@ try:
                         else:
                             print(f"La planche sur l'image {filename} est identique.")
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) > 1:
-                    pass
+                    print(f"Plusieurs cercles détectés sur l'image {filename}")
             else:
-                pass
+                print(f"Pas de rectangle détectés sur l'image {filename}")
         else:
-            pass
+            print(f"Le fichier {filename} ne contient pas la bonne extension")
     print("EOP")
 except Exception:
     traceback.print_exc()
