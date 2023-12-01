@@ -3,15 +3,17 @@ import traceback
 import cv2 as cv
 import numpy as np
 import os
+
 from classes.Image import Image
 from classes.Rectangle import Rectangle
+from classes.Colors import Colors
 
 try:
     # ================#
     # GLOBAL VARIABLE #
     # ================#
     MAX_DIMENSION: Final[int] = 800
-    MARGIN_ERROR: Final[float] = 1.1
+    MARGIN_ERROR: Final[float] = 1.2
     FOLDER_PATH: Final[str] = "./images/images_converted"
     TITLE_WINDOW: Final[str] = "Detected Circles"
 
@@ -138,13 +140,15 @@ try:
             ```
         """
 
-        print("####################")
+        print(f"{Colors.PURPLE}####################")
         print(
             f"\n=====\nSelected Circle Diameter (in pixels): {CIRCLE_DIAMETER_PIXEL}\n-----\n"
         )
 
         print(f"Distance from top (in pixels): {CIRCLE_DISTANCE_FROM_TOP_PIXEL}")
-        print(f"Distance from left (in pixels): {CIRCLE_DISTANCE_FROM_LEFT_PIXEL}")
+        print(
+            f"Distance from left (in pixels): {CIRCLE_DISTANCE_FROM_LEFT_PIXEL}{Colors.RESET}"
+        )
 
     def show(image: np.ndarray) -> None:
         """
@@ -176,17 +180,6 @@ try:
         if RAW_CIRCLES_IN_WHITE_RECTANGLE is not None:
             return np.round(RAW_CIRCLES_IN_WHITE_RECTANGLE[0, :]).astype("int")
         return None
-
-    def print_informations_circles(circles_array: np.ndarray) -> None:
-        for i, (
-            CIRCLE_X_COORD,
-            CIRCLE_Y_CCORD,
-            CIRCLE_RADIUS,
-        ) in enumerate(circles_array):
-            print(f"Circle {i + 1}:")
-            print(f"X: {CIRCLE_X_COORD}")
-            print(f"Y: {CIRCLE_Y_CCORD}")
-            print(f"Radius: {CIRCLE_RADIUS}")
 
     # ========#
     # PROGRAM #
@@ -309,7 +302,9 @@ try:
                 )
 
                 if CIRCLES_IN_WHITE_RECTANGLE is None:
-                    print(f"Pas de cercles détectés sur l'image {filename}")
+                    print(
+                        f"{Colors.RED}Pas de cercles détectés sur l'image {filename}{Colors.RESET}"
+                    )
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) == 1:
                     for j, (
                         CIRCLE_X_COORD,
@@ -352,7 +347,7 @@ try:
                         global_selected_filename = filename
                         global_white_rectangle_ratio = WHITE_RECTANGLE_RATIO
                         print(
-                            f"##########################\nFirst Rectangle : {global_white_rectangle_ratio}\n{filename}"
+                            f"{Colors.YELLOW}##########################\nFirst Rectangle : {global_white_rectangle_ratio}\n{filename}{Colors.RESET}"
                         )
                         # print_informations_circles(CIRCLES_IN_WHITE_RECTANGLE)
                         cv.imshow(TITLE_WINDOW, white_rectangle_image.original_image)
@@ -367,25 +362,44 @@ try:
                             ):
                                 break
                     else:
-                        print(f"##########################\n{WHITE_RECTANGLE_RATIO}")
+                        print(
+                            f"{Colors.YELLOW}##########################\n{WHITE_RECTANGLE_RATIO}{Colors.RESET}"
+                        )
                         if (
                             WHITE_RECTANGLE_RATIO
                             > MARGIN_ERROR * global_white_rectangle_ratio
                         ):
-                            print(f"La planche sur l'image {filename} est trop grande.")
+                            print(
+                                f"{Colors.ORANGE}La planche sur l'image {filename} est trop grande.{Colors.RESET}"
+                            )
                         elif (
                             WHITE_RECTANGLE_RATIO
                             < global_white_rectangle_ratio / MARGIN_ERROR
                         ):
-                            print(f"La planche sur l'image {filename} est trop petite.")
+                            print(
+                                f"{Colors.BLUE}La planche sur l'image {filename} est trop petite.{Colors.RESET}"
+                            )
                         else:
-                            print(f"La planche sur l'image {filename} est identique.")
+                            print(
+                                f"{Colors.GREEN}La planche sur l'image {filename} est identique.{Colors.RESET}"
+                            )
                 elif len(CIRCLES_IN_WHITE_RECTANGLE) > 1:
-                    print(f"Plusieurs cercles détectés sur l'image {filename}")
+                    print(
+                        f"{Colors.RED}Plusieurs cercles détectés sur l'image {filename}{Colors.RESET}"
+                    )
+                    if i == 1:
+                        print(
+                            f"{Colors.RED}Problème avec la première image{Colors.RESET}"
+                        )
+                        break
             else:
-                print(f"Pas de rectangle détectés sur l'image {filename}")
+                print(
+                    f"{Colors.RED}Pas de rectangle détectés sur l'image {filename}{Colors.RESET}"
+                )
         else:
-            print(f"Le fichier {filename} ne contient pas la bonne extension")
+            print(
+                f"{Colors.RED}Le fichier {filename} ne contient pas la bonne extension{Colors.RESET}"
+            )
     print("EOP")
 except Exception:
     traceback.print_exc()
