@@ -14,7 +14,7 @@ try:
     # ================#
     MAX_DIMENSION: Final[int] = 800
     MARGIN_ERROR: Final[float] = 1.2
-    FOLDER_PATH: Final[str] = "./images/images_converted"
+    FOLDER_PATH: Final[str] = "./images"
     TITLE_WINDOW: Final[str] = "Detected Circles"
 
     global_selected_circle: Tuple[int] = None
